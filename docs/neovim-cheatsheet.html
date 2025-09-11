@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neovim Cheatsheet for Beginners</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1b26; /* Dark theme background */
+            color: #c0caf5;
+        }
+        .key {
+            font-family: 'Fira Code', monospace;
+            background-color: #2a2c3a;
+            color: #a9b1d6;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #3b4261;
+            font-size: 0.9em;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+        .card {
+            background-color: #24283b;
+            border: 1px solid #414868;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #7aa2f7;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #7aa2f7;
+            padding-bottom: 0.5rem;
+        }
+        .command-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #3b4261;
+        }
+        .command-row:last-child {
+            border-bottom: none;
+        }
+        .command-key {
+            flex-shrink: 0;
+            margin-right: 1rem;
+        }
+        .command-desc {
+            text-align: right;
+            color: #a9b1d6;
+        }
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 1rem;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-4xl sm:text-5xl font-bold text-white flex items-center justify-center">
+                <svg class="header-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14.7727 2.34315L20.4296 8L16.25 20.4286H7.75L3.57041 8L9.22727 2.34315H14.7727Z" stroke="#7aa2f7" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M12 8V22" stroke="#7aa2f7" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                Neovim Cheatsheet
+            </h1>
+            <p class="mt-2 text-lg text-gray-400">The essential commands for beginners and beyond.</p>
+        </header>
+
+        <!-- Main Grid -->
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+            
+            <!-- The Three Modes -->
+            <div class="card md:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-5">
+                <h2 class="card-title">The Three Modes</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 bg-gray-900/50 rounded-lg"><h3 class="font-bold text-lg text-green-400">NORMAL Mode</h3><p class="text-sm mt-1">For navigation and manipulation. Press <span class="key">Esc</span> to enter.</p></div>
+                    <div class="p-4 bg-gray-900/50 rounded-lg"><h3 class="font-bold text-lg text-yellow-400">INSERT Mode</h3><p class="text-sm mt-1">For typing text. Enter with <span class="key">i</span>, <span class="key">a</span>, <span class="key">o</span>, etc.</p></div>
+                    <div class="p-4 bg-gray-900/50 rounded-lg"><h3 class="font-bold text-lg text-purple-400">VISUAL Mode</h3><p class="text-sm mt-1">For selecting text. Enter with <span class="key">v</span>, <span class="key">V</span>, or <span class="key">Ctrl+v</span>.</p></div>
+                </div>
+            </div>
+
+            <!-- Essential Commands -->
+            <div class="card xl:col-span-2">
+                <h2 class="card-title">Essentials</h2>
+                <div class="command-row"><div class="command-key"><span class="key">:w</span></div><div class="command-desc">Write (save)</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">:q</span></div><div class="command-desc">Quit</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">:wq</span></div><div class="command-desc">Write and quit</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">:q!</span></div><div class="command-desc">Quit without saving</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">u</span></div><div class="command-desc">Undo</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">Ctrl</span> + <span class="key">r</span></div><div class="command-desc">Redo</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">.</span></div><div class="command-desc">Repeat last change</div></div>
+            </div>
+
+            <!-- Motion -->
+            <div class="card md:col-span-2 2xl:col-span-3">
+                <h2 class="card-title">Motion</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                    <div>
+                        <div class="command-row"><div class="command-key"><span class="key">h</span> <span class="key">j</span> <span class="key">k</span> <span class="key">l</span></div><div class="command-desc">Left, down, up, right</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">w</span> / <span class="key">b</span></div><div class="command-desc">Start of next/prev word</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">e</span></div><div class="command-desc">End of current word</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">0</span> / <span class="key">$</span></div><div class="command-desc">Start / end of line</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">gg</span> / <span class="key">G</span></div><div class="command-desc">Start / end of file</div></div>
+                    </div>
+                    <div>
+                        <div class="command-row"><div class="command-key"><span class="key">H</span> / <span class="key">M</span> / <span class="key">L</span></div><div class="command-desc">Top/Middle/Bottom of screen</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">{</span> / <span class="key">}</span></div><div class="command-desc">Jump by paragraph</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">%</span></div><div class="command-desc">Jump to matching bracket</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">Ctrl</span>+<span class="key">d</span> / <span class="key">u</span></div><div class="command-desc">Scroll down / up</div></div>
+                         <div class="command-row"><div class="command-key"><span class="key">zz</span></div><div class="command-desc">Center screen on cursor</div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Editing & Inserting -->
+            <div class="card md:col-span-2 2xl:col-span-3">
+                <h2 class="card-title">Editing & Inserting</h2>
+                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                    <div>
+                        <div class="command-row"><div class="command-key"><span class="key">i</span> / <span class="key">a</span></div><div class="command-desc">Insert at / after cursor</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">I</span> / <span class="key">A</span></div><div class="command-desc">Insert at start / end of line</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">o</span> / <span class="key">O</span></div><div class="command-desc">Open line below / above</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">r</span> + <span class="key">{char}</span></div><div class="command-desc">Replace single character</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">s</span> / <span class="key">S</span></div><div class="command-desc">Substitute char / line</div></div>
+                    </div>
+                    <div>
+                        <div class="command-row"><div class="command-key"><span class="key">x</span></div><div class="command-desc">Delete character</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">dd</span></div><div class="command-desc">Delete current line</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">yy</span></div><div class="command-desc">Yank (copy) current line</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">p</span> / <span class="key">P</span></div><div class="command-desc">Paste after / before cursor</div></div>
+                        <div class="command-row"><div class="command-key"><span class="key">J</span></div><div class="command-desc">Join line below</div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Visual Mode -->
+            <div class="card xl:col-span-2">
+                <h2 class="card-title">Visual Mode</h2>
+                <div class="command-row"><div class="command-key"><span class="key">v</span></div><div class="command-desc">Character-wise select</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">V</span></div><div class="command-desc">Line-wise select</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">Ctrl</span>+<span class="key">v</span></div><div class="command-desc">Block-wise select</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">o</span></div><div class="command-desc">Move cursor to other end</div></div>
+                <p class="text-sm mt-4 text-center text-gray-400">Run operators like <span class="key">d</span>, <span class="key">y</span>, <span class="key">c</span> on selected text.</p>
+            </div>
+
+            <!-- Vim Grammar -->
+            <div class="card md:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-5">
+                <h2 class="card-title">The Vim Grammar: Operator + Motion/Text Object</h2>
+                <p class="mb-4">Combine an operator with a motion or text object. For example: <span class="key">ciw</span> = <span class="font-semibold">C</span>hange <span class="font-semibold">I</span>nner <span class="font-semibold">W</span>ord.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <h3 class="font-bold text-lg text-red-400 mb-2">Operators (Verbs)</h3>
+                        <p><span class="key">d</span> - delete</p>
+                        <p><span class="key">y</span> - yank (copy)</p>
+                        <p><span class="key">c</span> - change (delete & insert)</p>
+                        <p><span class="key">&gt;</span> / <span class="key">&lt;</span> - indent / un-indent</p>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-blue-400 mb-2">Text Objects (Nouns)</h3>
+                        <p><span class="key">iw</span> / <span class="key">aw</span> - inner / a word</p>
+                        <p><span class="key">i"</span> / <span class="key">a"</span> - inner / around quotes</p>
+                        <p><span class="key">i)</span> / <span class="key">a)</span> - inner / around parentheses</p>
+                        <p><span class="key">i}</span> / <span class="key">a}</span> - inner / around braces</p>
+                        <p><span class="key">ip</span> / <span class="key">ap</span> - inner / a paragraph</p>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-teal-400 mb-2">Examples</h3>
+                        <p><span class="key">d$</span> - Delete to end of line</p>
+                        <p><span class="key">caw</span> - Change a word (with space)</p>
+                        <p><span class="key">yi"</span> - Yank text inside quotes</p>
+                        <p><span class="key">Vap</span> - Select a paragraph visually</p>
+                        <p><span class="key">&gt;i}</span> - Indent inside curly braces</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search & Replace -->
+            <div class="card xl:col-span-2 2xl:col-span-3">
+                <h2 class="card-title">Search & Replace</h2>
+                <div class="command-row"><div class="command-key"><span class="key">/</span> + <span class="key">text</span></div><div class="command-desc">Search forward</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">?</span> + <span class="key">text</span></div><div class="command-desc">Search backward</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">n</span> / <span class="key">N</span></div><div class="command-desc">Next / prev result</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">*</span> / <span class="key">#</span></div><div class="command-desc">Search for word under cursor</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">:%s/old/new/g</span></div><div class="command-desc">Replace all in file</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">:%s/old/new/gc</span></div><div class="command-desc">Replace with confirm</div></div>
+            </div>
+
+            <!-- Window Management -->
+            <div class="card 2xl:col-span-2">
+                <h2 class="card-title">Window Management</h2>
+                <div class="command-row"><div class="command-key"><span class="key">:sp</span> / <span class="key">:vsp</span></div><div class="command-desc">Horizontal/Vertical split</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">Ctrl</span>+<span class="key">w</span> <span class="key">s</span> / <span class="key">v</span></div><div class="command-desc">Split shortcuts</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">Ctrl</span>+<span class="key">w</span> <span class="key">h/j/k/l</span></div><div class="command-desc">Move to split</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">Ctrl</span>+<span class="key">w</span> <span class="key">q</span></div><div class="command-desc">Close split</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">:tabnew</span></div><div class="command-desc">New tab</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">gt</span> / <span class="key">gT</span></div><div class="command-desc">Next / Prev tab</div></div>
+            </div>
+
+            <!-- Macros & Marks -->
+            <div class="card 2xl:col-span-2">
+                <h2 class="card-title">Macros & Marks</h2>
+                <div class="command-row"><div class="command-key"><span class="key">q</span> + <span class="key">{a-z}</span></div><div class="command-desc">Record macro in register</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">q</span></div><div class="command-desc">Stop recording</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">@</span> + <span class="key">{a-z}</span></div><div class="command-desc">Execute macro</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">m</span> + <span class="key">{a-z}</span></div><div class="command-desc">Set mark at cursor</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">'</span> + <span class="key">{a-z}</span></div><div class="command-desc">Jump to line of mark</div></div>
+                <div class="command-row"><div class="command-key"><span class="key">`</span> + <span class="key">{a-z}</span></div><div class="command-desc">Jump to exact position</div></div>
+            </div>
+
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-500">
+            <p>Happy Vimming!</p>
+        </footer>
+    </div>
+</body>
+</html>
+
+

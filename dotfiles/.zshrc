@@ -5,7 +5,7 @@ export EDITOR='nvim'
 
 export NVM_DIR="$HOME/.nvm"
   [ -s "/usr/local/opt/nvm/nvm.sh" ] && \. "/usr/local/opt/nvm/nvm.sh"  # This loads nvm
-#  [ -s "/usr/local/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/usr/local/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+  [ -s "/usr/local/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/usr/local/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
 
 eval "$(starship init zsh)"
 
@@ -80,3 +80,11 @@ _fzf_comprun() {
 alias ls="eza --icons=always"
 alias cd="z"
 alias l="ls -la"
+alias cy="claude --dangerously-skip-permissions"
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/simonspoon/.cache/lm-studio/bin"
+# End of LM Studio CLI section
+
+alias ta="tmux attach-session -t"
+alias startdev="~/mac-setup/scripts/dev.applescript"
