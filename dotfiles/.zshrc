@@ -80,11 +80,21 @@ _fzf_comprun() {
 alias ls="eza --icons=always"
 alias cd="z"
 alias l="ls -la"
-alias cy="claude --dangerously-skip-permissions"
-
+alias cy="pnpm install -g @anthropic-ai/claude-code && claude --dangerously-skip-permissions"
+alias shelledit="nvim ~/.zshrc"
+alias cry="crush -y"
 # Added by LM Studio CLI (lms)
 export PATH="$PATH:/Users/simonspoon/.cache/lm-studio/bin"
 # End of LM Studio CLI section
-
+bindkey -v
+bindkey '^I' expand-or-complete  # Bind Tab (Ctrl+I) to expand or complete
 alias ta="tmux attach-session -t"
 alias startdev="~/mac-setup/scripts/dev.applescript"
+
+export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/platform-tools"
+export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/cmdline-tools/latest/bin/"
+
+if [ -f .envs ]; then
+  source .envs
+fi
+
