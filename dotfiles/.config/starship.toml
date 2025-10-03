@@ -1,10 +1,10 @@
 format = """
-[\ue0b6](#DA627D)\
+[\ue0b2](#6d31b7)\
 $directory\
-[\ue0b0](fg:#DA627D bg:#FCA17D)\
+[\ue0b0](fg:#6d31b7 bg:#26a300)\
 $git_branch\
 $git_status\
-[\ue0b0](fg:#FCA17D bg:#86BBD8)\
+[\ue0b0](fg:#26a300 bg:#ffcc00)\
 $c\
 $elixir\
 $elm\
@@ -17,13 +17,13 @@ $nodejs\
 $nim\
 $rust\
 $scala\
-[\ue0b0](fg:#86BBD8 bg:#06969A)\
+[\ue0b0](fg:#ffcc00 bg:#06969A)\
 $docker_context\
-[\ue0b0](fg:#06969A)\
+[\ue0b0](fg:#06969A bg:#33658A)\
 $fill\
-[\ue0b2](fg:#33658A)\
+[\ue0b2](fg:#33658A bg:#33658A)\
 $time\
-[\ue0b4](fg:#33658A)\
+[\ue0b0](fg:#33658A)\
 \n \
 """
 
@@ -46,7 +46,7 @@ style = "bg:#9A348E"
 disabled = true # Disabled by default
 
 [directory]
-style = "bg:#DA627D"
+style = "bg:#6d31b7 bold"
 format = "[ $path ]($style)"
 truncation_length = 1
 truncation_symbol = "…/"
@@ -91,14 +91,15 @@ format = '[ $symbol ($version) ]($style)'
 
 [fill]
 symbol = " "
+style = "bg:#33658A"
 
 [git_branch]
 symbol = ""
-style = "bg:#FCA17D"
+style = "bg:#26a300 bold"
 format = '[ $symbol $branch ]($style)'
 
 [git_status]
-style = "bg:#FCA17D"
+style = "bg:#26a300 bold"
 format = '[$all_status$ahead_behind ]($style)'
 
 [golang]
@@ -127,7 +128,7 @@ format = '[ $symbol ($version) ]($style)'
 
 [nodejs]
 symbol = ""
-style = "bg:#86BBD8"
+style = "bg:#ffcc00 fg:black bold"
 format = '[ $symbol ($version) ]($style)'
 
 [nim]

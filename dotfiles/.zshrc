@@ -12,7 +12,7 @@ eval "$(starship init zsh)"
 eval "$(zoxide init zsh)"
 
 # pnpm
-export PNPM_HOME="~/Library/pnpm"
+export PNPM_HOME="/Users/simonspoon/Library/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
@@ -86,13 +86,11 @@ alias cry="crush -y"
 # Added by LM Studio CLI (lms)
 export PATH="$PATH:~/.cache/lm-studio/bin"
 # End of LM Studio CLI section
-bindkey -v
-bindkey '^I' expand-or-complete  # Bind Tab (Ctrl+I) to expand or complete
 alias ta="tmux attach-session -t"
 alias startdev="~/mac-setup/scripts/dev.applescript"
 
-export PATH="$PATH:~/Library/Android/sdk/platform-tools"
-export PATH="$PATH:~/Library/Android/sdk/cmdline-tools/latest/bin/"
+export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/platform-tools"
+export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/cmdline-tools/latest/bin/"
 
 if [ -f ~/.envs ]; then
   source ~/.envs
