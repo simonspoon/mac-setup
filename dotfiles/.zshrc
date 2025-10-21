@@ -78,7 +78,6 @@ _fzf_comprun() {
 
 
 alias ls="eza --icons=always"
-alias cd="z"
 alias l="ls -la"
 alias cy="pnpm install -g @anthropic-ai/claude-code && claude --dangerously-skip-permissions"
 alias shelledit="nvim ~/.zshrc"

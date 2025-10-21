@@ -22,6 +22,7 @@ $docker_context\
 [\ue0b0](fg:#06969A bg:#33658A)\
 $fill\
 [\ue0b2](fg:#33658A bg:#33658A)\
+$hostname\
 $time\
 [\ue0b0](fg:#33658A)\
 \n $character \
@@ -42,6 +43,11 @@ style_user = "bg:#9A348E"
 style_root = "bg:#9A348E"
 format = '[$user ]($style)'
 disabled = false
+
+[hostname]
+ssh_only = false       # Show hostname always, not just on SSH sessions
+style = "bold yellow bg:#33658A"  # Color and style for the hostname
+format = "[$hostname]($style)"  # Customize format; you can change styling
 
 # An alternative to the username module which displays a symbol that
 # represents the current operating system
