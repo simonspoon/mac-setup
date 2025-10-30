@@ -77,6 +77,8 @@ _fzf_comprun() {
 }
 
 
+alias du1="du -h -d 1"
+alias cleanobjbin='find . -type d \( -name "obj" -o -name "bin" \) -print0 | xargs -0 rm -rf'
 alias ls="eza --icons=always"
 alias l="ls -la"
 alias cy="pnpm install -g @anthropic-ai/claude-code && claude --dangerously-skip-permissions"
@@ -90,6 +92,8 @@ alias startdev="~/mac-setup/scripts/dev.applescript"
 
 export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/platform-tools"
 export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/cmdline-tools/latest/bin/"
+export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/emulator"
+export ANDROID_SDK_ROOT="/Users/simonspoon/Library/Android/sdk"
 
 if [ -f ~/.envs ]; then
   source ~/.envs
