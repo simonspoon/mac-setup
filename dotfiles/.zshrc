@@ -85,13 +85,16 @@ alias cleanobjbin='find . -type d \( -name "obj" -o -name "bin" \) -print0 | xar
 alias ls="eza --icons=always"
 alias l="ls -la"
 alias cy="pnpm install -g @anthropic-ai/claude-code && claude --dangerously-skip-permissions"
-alias shelledit="nvim ~/.zshrc"
 alias cry="crush -y"
 # Added by LM Studio CLI (lms)
 export PATH="$PATH:~/.cache/lm-studio/bin"
 # End of LM Studio CLI section
 alias ta="tmux attach-session -t"
 alias startdev="~/mac-setup/scripts/dev.applescript"
+alias oc='opencode'
+alias shelleditlocal="nvim ~/local.zshrc && reloadzsh"
+alias shelledit="nvim ~/.zshrc && reloadzsh"
+alias reloadzsh='source ~/.zshrc'
 
 export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/platform-tools"
 export PATH="$PATH:/Users/simonspoon/Library/Android/sdk/cmdline-tools/latest/bin/"
