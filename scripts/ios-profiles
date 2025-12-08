@@ -1,0 +1,500 @@
+#!/usr/bin/env bash
+# ios-profiles — inspect iOS provisioning profiles on macOS
+# Features:
+# - list (table or JSON), filter by --valid/--expired, --wide columns
+# - robust date parsing (handles ISO and "YYYY-MM-DD HH:MM:SS +0000")
+# - infer Type (Development / AdHoc / AppStore / Enterprise)
+# - show by UUID or name substring, optional --entitlements JSON
+# - open by UUID, remove expired with --dry-run
+# No external deps beyond: security, plutil, PlistBuddy, date, sort, column, sed, awk, grep.
+
+set -euo pipefail
+
+PROFILE_DIR="${PROFILE_DIR:-$HOME/Library/MobileDevice/Provisioning Profiles}"
+
+usage() {
+  cat <<'EOF'
+ios-profiles — inspect iOS provisioning profiles on macOS
+
+USAGE
+  ios-profiles list [--expired|--valid] [--json] [--wide] [--entitlements] [--dir <path>]
+  ios-profiles show <UUID|name-substring> [--entitlements] [--json] [--dir <path>]
+  ios-profiles open <UUID> [--dir <path>]
+  ios-profiles rm-expired [--dry-run] [--dir <path>]
+
+OPTIONS
+  --dir <path>        Profile directory (default: ~/Library/MobileDevice/Provisioning Profiles)
+  --expired           Only expired profiles
+  --valid             Only valid (not expired) profiles
+  --json              Emit JSON
+  --wide              Include more columns (File, Platforms, DeviceCount)
+  --entitlements      Include entitlements (JSON) in list/show
+  --dry-run           Show what would be deleted (rm-expired)
+
+COLUMNS (table)
+  Expiration | Type | UUID | Name | TeamID | BundleID [| File | Platforms | DeviceCount]
+
+TYPE INFERENCE
+  Enterprise: ProvisionsAllDevices = true
+  Development: ProvisionedDevices present AND Entitlements:get-task-allow = true
+  AdHoc: ProvisionedDevices present AND get-task-allow = false
+  AppStore: no ProvisionedDevices and not Enterprise
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+require_tools() {
+  for t in /usr/bin/security /usr/libexec/PlistBuddy plutil date grep awk sed sort column; do
+    command -v "$t" >/dev/null 2>&1 || die "missing required tool: $t"
+  done
+}
+
+read_plist_from_profile() {
+  local profile="$1"
+  /usr/bin/security cms -D -i "$profile"
+}
+
+# --- plutil helpers (prefer canonical JSON for stability) -------------------
+
+# Extract a key as raw JSON from stdin plist; echo "null" if missing.
+pljson() { plutil -extract "$1" json -o - - 2>/dev/null || echo "null"; }
+
+# Extract a key as string (strip surrounding quotes); empty if null.
+plstr() {
+  local val
+  val="$(/usr/libexec/PlistBuddy -c "Print :$1" /dev/stdin 2>/dev/null || true)"
+  printf "%s" "$val"
+}
+
+# Extract bool as "true"/"false"/"" (empty if missing)
+plbool() {
+  local j
+  j="$(pljson "$1")"
+  case "$j" in
+  true | false) echo "$j" ;;
+  *) echo "" ;;
+  esac
+}
+
+# Return 1 if key exists as an Array with length>0, else 0
+plarray_present() {
+  # We detect array presence/length by looking at JSON quickly.
+  local j
+  j="$(pljson "$1")"
+  [[ "$j" == "null" ]] && {
+    echo 0
+    return
+  }
+  # strip spaces
+  j="${j//[[:space:]]/}"
+  # [] -> empty
+  [[ "$j" == "[]" ]] && {
+    echo 0
+    return
+  }
+  # Otherwise assume nonempty
+  echo 1
+}
+
+# Join a JSON array of strings into comma-separated text (no quotes/brackets)
+plarray_join_csv() {
+  local j
+  j="$(pljson "$1")"
+  [[ "$j" == "null" || "$j" == "[]" ]] && {
+    echo ""
+    return
+  }
+  printf "%s" "$j" | sed -E 's/^\[|\]$//g; s/"//g; s/, */,/g'
+}
+
+# --- misc helpers -----------------------------------------------------------
+
+iso_to_epoch() {
+  local raw="${1:-}"
+  [[ -z "$raw" ]] && {
+    echo 0
+    return
+  }
+
+  # Prefer ISO "YYYY-MM-DDTHH:MM:SSZ"
+  local ts
+  ts="$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$raw" +%s 2>/dev/null || true)"
+  [[ -n "$ts" ]] && {
+    echo "$ts"
+    return
+  }
+
+  # Also handle "YYYY-MM-DD HH:MM:SS +0000"
+  ts="$(date -j -f "%Y-%m-%d %H:%M:%S %z" "$raw" +%s 2>/dev/null || true)"
+  [[ -n "$ts" ]] && {
+    echo "$ts"
+    return
+  }
+
+  # Rare: "YYYY-MM-DD HH:MM:SS +00:00" -> normalize to +0000 and try again
+  if [[ "$raw" =~ \+[0-9]{2}:[0-9]{2}$ ]]; then
+    local norm="${raw/%:??/0000}"
+    ts="$(date -j -f "%Y-%m-%d %H:%M:%S %z" "$norm" +%s 2>/dev/null || true)"
+    [[ -n "$ts" ]] && {
+      echo "$ts"
+      return
+    }
+  fi
+
+  # Handle PlistBuddy verbose format: "Sat Aug 15 15:35:29 AEDT 2026"
+  ts="$(date -j -f "%a %b %d %H:%M:%S %Z %Y" "$raw" +%s 2>/dev/null || true)"
+  [[ -n "$ts" ]] && {
+    echo "$ts"
+    return
+  }
+
+  echo 0
+}
+
+bundle_id_from_appid() {
+  # TEAMID.com.example.app -> com.example.app (or wildcard)
+  local appid="${1:-}"
+  [[ -z "$appid" ]] && {
+    echo ""
+    return
+  }
+  echo "$appid" | sed 's/^[^.]*\.//'
+}
+
+infer_type() {
+  local plist="$1"
+  local allDevices provisioned getTask
+  allDevices="$(printf "%s" "$plist" | plbool "ProvisionsAllDevices")"
+  provisioned="$(printf "%s" "$plist" | plarray_present "ProvisionedDevices")"
+  getTask="$(printf "%s" "$plist" | plbool "Entitlements:get-task-allow")"
+
+  if [[ "$allDevices" == "true" ]]; then
+    echo "Enterprise"
+  elif [[ "$provisioned" == "1" ]]; then
+    [[ "$getTask" == "true" ]] && echo "Development" || echo "AdHoc"
+  else
+    echo "AppStore"
+  fi
+}
+
+device_count() {
+  # Use PlistBuddy for reliable counting of ProvisionedDevices
+  local plist="$1"
+  local out
+  out="$(printf "%s" "$plist" | /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' /dev/stdin 2>/dev/null || true)"
+  if [[ -z "$out" || "$out" != Array* ]]; then
+    echo 0
+    return
+  fi
+  printf "%s\n" "$out" | sed -n '2,$p' | sed 's/^[[:space:]]*//' | grep -c .
+}
+
+# --- core renderers ---------------------------------------------------------
+
+print_table_header() {
+  local wide="${1:-0}"
+  if [[ "$wide" -eq 1 ]]; then
+    printf "|Expiration|Type|UUID|Name|TeamID|BundleID|File|Platforms|Devices|\n"
+    printf "|----------|----|----|----|----|--------|----|---------|-------|\n"
+  else
+    printf "|Expiration|Type|UUID|Name|TeamID|BundleID|\n"
+    printf "|----------|----|----|----|----|--------|\n"
+  fi
+}
+
+truncate_str() {
+  local str="$1" max="$2"
+  if [[ ${#str} -gt $max ]]; then
+    printf "%s…" "${str:0:$((max-1))}"
+  else
+    printf "%s" "$str"
+  fi
+}
+
+format_date() {
+  local raw="$1"
+  local epoch
+  epoch="$(iso_to_epoch "$raw")"
+  [[ "$epoch" -eq 0 ]] && { printf "%s" "$raw"; return; }
+  date -j -f "%s" "$epoch" "+%Y-%m-%d" 2>/dev/null || printf "%s" "$raw"
+}
+
+render_row_table() {
+  local wide="$1" exp="$2" type="$3" uuid="$4" name="$5" teamid="$6" bundle="$7" file="$8" platforms="$9" devcnt="${10}"
+  # Truncate for readable columns
+  local short_uuid="${uuid:0:8}"
+  local short_name short_bundle short_file short_exp
+  short_name="$(truncate_str "$name" 30)"
+  short_bundle="$(truncate_str "$bundle" 25)"
+  short_file="$(basename "$file")"
+  short_exp="$(format_date "$exp")"
+
+  if [[ "$wide" -eq 1 ]]; then
+    printf "%s|%s|%s|%s|%s|%s|%s|%s|%s\n" "$short_exp" "$type" "$short_uuid" "$short_name" "$teamid" "$short_bundle" "$short_file" "$platforms" "$devcnt"
+  else
+    printf "%s|%s|%s|%s|%s|%s\n" "$short_exp" "$type" "$short_uuid" "$short_name" "$teamid" "$short_bundle"
+  fi
+}
+
+escape_json_string() {
+  # Minimal string escaper using sed; avoids external deps.
+  sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
+render_row_json() {
+  local exp="$1" type="$2" uuid="$3" name="$4" teamname="$5" teamid="$6" bundle="$7" appid="$8" file="$9" platforms="${10}" devcnt="${11}" ent_json="${12:-}"
+  local name_e teamname_e platforms_e file_e
+  name_e="$(printf "%s" "$name" | escape_json_string)"
+  teamname_e="$(printf "%s" "$teamname" | escape_json_string)"
+  platforms_e="$(printf "%s" "$platforms" | escape_json_string)"
+  file_e="$(printf "%s" "$file" | escape_json_string)"
+  printf "{"
+  printf "\"Expiration\":\"%s\",\"Type\":\"%s\",\"UUID\":\"%s\",\"Name\":\"%s\"," "$exp" "$type" "$uuid" "$name_e"
+  printf "\"TeamName\":\"%s\",\"TeamID\":\"%s\",\"BundleID\":\"%s\",\"ApplicationIdentifier\":\"%s\"," "$teamname_e" "$teamid" "$bundle" "$appid"
+  printf "\"File\":\"%s\",\"Platforms\":\"%s\",\"DeviceCount\":%s" "$file_e" "$platforms_e" "${devcnt:-0}"
+  if [[ -n "$ent_json" ]]; then
+    printf ",\"Entitlements\":%s" "$ent_json"
+  fi
+  printf "}"
+}
+
+# --- commands ---------------------------------------------------------------
+
+cmd="${1:-}"
+shift || true || true
+[[ -z "${cmd:-}" ]] && {
+  usage
+  exit 1
+}
+
+filter="all" # all|valid|expired
+want_json=0
+wide=0
+with_ent=0
+dry_run=0
+dir="$PROFILE_DIR"
+args=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --expired) filter="expired" ;;
+  --valid) filter="valid" ;;
+  --json) want_json=1 ;;
+  --wide) wide=1 ;;
+  --entitlements) with_ent=1 ;;
+  --dry-run) dry_run=1 ;;
+  --dir)
+    dir="${2:-}"
+    [[ -z "$dir" ]] && die "--dir requires a path"
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *) args+=("$1") ;;
+  esac
+  shift || true
+done
+set -- "${args[@]:-}"
+
+require_tools
+
+case "$cmd" in
+list)
+  shopt -s nullglob
+  files=("$dir"/*.mobileprovision)
+  shopt -u nullglob
+
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    if [[ "$want_json" -eq 1 ]]; then
+      echo "[]"
+    else
+      echo "No profiles found in: $dir"
+    fi
+    exit 0
+  fi
+
+  if [[ "$want_json" -eq 1 ]]; then
+    outfirst=1
+    printf "["
+  else
+    print_table_header "$wide"
+  fi
+
+  now_epoch="$(date +%s)"
+  buf=""
+  for p in "${files[@]}"; do
+    plist="$(read_plist_from_profile "$p")"
+
+    name="$(printf "%s" "$plist" | plstr "Name")"
+    uuid="$(printf "%s" "$plist" | plstr "UUID")"
+
+    # Use canonical JSON for date first; fallback to PlistBuddy format.
+    exp="$(printf "%s" "$plist" | plstr "ExpirationDate")"
+    if [[ -z "$exp" ]]; then
+      exp="$(printf "%s" "$plist" | /usr/libexec/PlistBuddy -c 'Print :ExpirationDate' /dev/stdin 2>/dev/null || true)"
+    fi
+    epoch="$(iso_to_epoch "$exp")"
+    is_expired=0
+    [[ "$epoch" -gt 0 && "$epoch" -lt "$now_epoch" ]] && is_expired=1
+
+    case "$filter" in
+    expired) [[ "$is_expired" -eq 1 ]] || continue ;;
+    valid) [[ "$is_expired" -eq 0 ]] || continue ;;
+    esac
+
+    teamname="$(printf "%s" "$plist" | plstr "TeamName")"
+    teamid="$(printf "%s" "$plist" | plstr "TeamIdentifier:0")"
+    appid="$(printf "%s" "$plist" | plstr "Entitlements:application-identifier")"
+    bundle="$(bundle_id_from_appid "$appid")"
+    type="$(infer_type "$plist")"
+    platforms="$(printf "%s" "$plist" | plarray_join_csv "Platform")"
+    devcnt="$(device_count "$plist")"
+    ent_json=""
+    if [[ "$with_ent" -eq 1 ]]; then
+      ent_json="$(printf "%s" "$plist" | pljson "Entitlements")"
+      [[ -z "$ent_json" ]] && ent_json="null"
+    fi
+
+    if [[ "$want_json" -eq 1 ]]; then
+      [[ $outfirst -eq 0 ]] && printf ","
+      outfirst=0
+      render_row_json "$exp" "$type" "$uuid" "$name" "$teamname" "$teamid" "$bundle" "$appid" "$p" "$platforms" "$devcnt" "$ent_json"
+    else
+      buf+="|$(render_row_table "$wide" "$exp" "$type" "$uuid" "$name" "$teamid" "$bundle" "$p" "$platforms" "$devcnt")|
+"
+    fi
+  done
+
+  if [[ "$want_json" -eq 1 ]]; then
+    printf "]\n"
+  else
+    # sort by Expiration column (markdown table format)
+    printf "%s" "$buf" | sort
+  fi
+  ;;
+
+show)
+  [[ $# -ge 1 ]] || die "show requires <UUID|name-substring>"
+  needle="$1"
+
+  shopt -s nullglob
+  files=("$dir"/*.mobileprovision)
+  shopt -u nullglob
+
+  matches=()
+  for p in "${files[@]}"; do
+    plist="$(read_plist_from_profile "$p")"
+    name="$(printf "%s" "$plist" | plstr "Name")"
+    uuid="$(printf "%s" "$plist" | plstr "UUID")"
+    [[ "$uuid" == "$needle" || "$name" == *"$needle"* ]] && matches+=("$p")
+  done
+
+  [[ "${#matches[@]}" -eq 0 ]] && die "No profile matching: $needle"
+  [[ "${#matches[@]}" -gt 1 ]] && {
+    printf "Multiple matches:\n"
+    printf "  %s\n" "${matches[@]}"
+    die "Please refine your needle."
+  }
+
+  p="${matches[0]}"
+  plist="$(read_plist_from_profile "$p")"
+
+  name="$(printf "%s" "$plist" | plstr "Name")"
+  uuid="$(printf "%s" "$plist" | plstr "UUID")"
+  exp="$(printf "%s" "$plist" | plstr "ExpirationDate")"
+  if [[ -z "$exp" ]]; then
+    exp="$(printf "%s" "$plist" | /usr/libexec/PlistBuddy -c 'Print :ExpirationDate' /dev/stdin 2>/dev/null || true)"
+  fi
+  teamname="$(printf "%s" "$plist" | plstr "TeamName")"
+  teamid="$(printf "%s" "$plist" | plstr "TeamIdentifier:0")"
+  appid="$(printf "%s" "$plist" | plstr "Entitlements:application-identifier")"
+  bundle="$(bundle_id_from_appid "$appid")"
+  type="$(infer_type "$plist")"
+  platforms="$(printf "%s" "$plist" | plarray_join_csv "Platform")"
+  devcnt="$(device_count "$plist")"
+  ent_json=""
+  [[ "$with_ent" -eq 1 ]] && ent_json="$(printf "%s" "$plist" | pljson "Entitlements")"
+
+  if [[ "$want_json" -eq 1 ]]; then
+    render_row_json "$exp" "$type" "$uuid" "$name" "$teamname" "$teamid" "$bundle" "$appid" "$p" "$platforms" "$devcnt" "${ent_json:-}"
+    echo
+  else
+    echo "File:        $p"
+    echo "Name:        $name"
+    echo "UUID:        $uuid"
+    echo "Type:        $type"
+    echo "Team:        $teamname ($teamid)"
+    echo "BundleID:    $bundle"
+    echo "AppID:       $appid"
+    echo "Platforms:   $platforms"
+    echo "Devices:     $devcnt"
+    echo "Expiration:  $exp"
+    if [[ "$with_ent" -eq 1 ]]; then
+      echo "Entitlements:"
+      printf "%s\n" "${ent_json:-null}" | sed 's/^/  /'
+    fi
+  fi
+  ;;
+
+open)
+  [[ $# -ge 1 ]] || die "open requires <UUID>"
+  needle="$1"
+  shopt -s nullglob
+  files=("$dir"/*.mobileprovision)
+  shopt -u nullglob
+  for p in "${files[@]}"; do
+    plist="$(read_plist_from_profile "$p")"
+    uuid="$(printf "%s" "$plist" | plstr "UUID")"
+    if [[ "$uuid" == "$needle" ]]; then
+      open "$p"
+      echo "Opened: $p"
+      exit 0
+    fi
+  done
+  die "Profile not found for UUID: $needle"
+  ;;
+
+rm-expired)
+  shopt -s nullglob
+  files=("$dir"/*.mobileprovision)
+  shopt -u nullglob
+  [[ "${#files[@]}" -eq 0 ]] && {
+    echo "No profiles in: $dir"
+    exit 0
+  }
+
+  now_epoch="$(date +%s)"
+  deleted=0
+  for p in "${files[@]}"; do
+    plist="$(read_plist_from_profile "$p")"
+    name="$(printf "%s" "$plist" | plstr "Name")"
+    uuid="$(printf "%s" "$plist" | plstr "UUID")"
+    exp="$(printf "%s" "$plist" | plstr "ExpirationDate")"
+    if [[ -z "$exp" ]]; then
+      exp="$(printf "%s" "$plist" | /usr/libexec/PlistBuddy -c 'Print :ExpirationDate' /dev/stdin 2>/dev/null || true)"
+    fi
+    epoch="$(iso_to_epoch "$exp")"
+    if [[ "$epoch" -gt 0 && "$epoch" -lt "$now_epoch" ]]; then
+      if [[ "$dry_run" -eq 1 ]]; then
+        echo "[dry-run] would delete: $name ($uuid) -> $p"
+      else
+        echo "deleting: $name ($uuid) -> $p"
+        rm -f "$p"
+        ((deleted++)) || true
+      fi
+    fi
+  done
+  [[ "$dry_run" -eq 1 ]] && echo "Dry-run complete." || echo "Deleted $deleted expired profile(s)."
+  ;;
+
+*)
+  usage
+  die "unknown command: $cmd"
+  ;;
+esac

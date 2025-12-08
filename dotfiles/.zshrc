@@ -76,6 +76,9 @@ _fzf_comprun() {
   esac
 }
 
+function mkcd() {
+  mkdir -p "$@" && cd "${@: -1}"
+}
 
 alias du1="du -h -d 1"
 alias cleanobjbin='find . -type d \( -name "obj" -o -name "bin" \) -print0 | xargs -0 rm -rf'
