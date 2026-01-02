@@ -80,11 +80,18 @@ function mkcd() {
   mkdir -p "$@" && cd "${@: -1}"
 }
 
+# Git worktree helpers (bare clone workflow)
+alias gwt="~/mac-setup/scripts/gwt"
+function gwtcd() {
+  local path
+  path=$(gwt path "$1") && cd "$path"
+}
+
 alias du1="du -h -d 1"
 alias cleanobjbin='find . -type d \( -name "obj" -o -name "bin" \) -print0 | xargs -0 rm -rf'
 alias ls="eza --icons=always"
 alias l="ls -la"
-alias cy="pnpm install -g @anthropic-ai/claude-code && claude --dangerously-skip-permissions"
+alias cy="claude --dangerously-skip-permissions"
 alias cry="crush -y"
 # Added by LM Studio CLI (lms)
 export PATH="$PATH:~/.cache/lm-studio/bin"
