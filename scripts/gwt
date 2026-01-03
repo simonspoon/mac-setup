@@ -64,6 +64,7 @@ cmd_clone() {
   echo "Cloning $url into $name/.bare..."
   mkdir -p "$name"
   git clone --bare "$url" "$name/.bare"
+  echo "gitdir: ./.bare" > "$name/.git"
 
   # Configure bare repo for worktree use
   git -C "$name/.bare" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
@@ -80,6 +81,7 @@ cmd_clone() {
   echo ""
   echo "Done! Created:"
   echo "  $name/.bare (bare repository)"
+  echo "  $name/.git (gitfile)"
   echo "  $name/$main_branch (worktree)"
   echo ""
   echo "cd $name/$main_branch to start working"
