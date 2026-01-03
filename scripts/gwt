@@ -19,6 +19,7 @@ Commands:
   list                   List all worktrees
   remove <name>          Remove a worktree
   prune                  Remove stale worktree references
+  init                   Create .git gitfile in current project
   path <name>            Print path to worktree (for cd integration)
 
 Examples:
@@ -163,6 +164,16 @@ cmd_path() {
   echo "$worktree_path"
 }
 
+cmd_init() {
+  local root
+  root=$(get_root)
+
+  [[ -e "$root/.git" ]] && die ".git already exists"
+
+  echo "gitdir: ./.bare" > "$root/.git"
+  echo "Created $root/.git"
+}
+
 # Main dispatch
 case "${1:-}" in
   clone)  shift; cmd_clone "$@" ;;
@@ -170,6 +181,7 @@ case "${1:-}" in
   list)   cmd_list ;;
   remove) shift; cmd_remove "$@" ;;
   prune)  cmd_prune ;;
+  init)   cmd_init ;;
   path)   shift; cmd_path "$@" ;;
   -h|--help|help|"") usage ;;
   *)      die "unknown command: $1" ;;
