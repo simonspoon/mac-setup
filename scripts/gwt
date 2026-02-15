@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Git Worktree Helper for bare clone workflow
+# Directory structure: project/.bare/ + project/<branch>/
+
+die() {
+  echo "error: $1" >&2
+  exit 1
+}
+
+usage() {
+  cat <<EOF
+Usage: gwt <command> [args]
+
+Commands:
+  clone <url> [name]     Clone repo as bare, create main worktree
+  add <branch> [-b]      Add worktree for branch (-b creates new branch)
+  list                   List all worktrees
+  remove <name>          Remove a worktree
+  prune                  Remove stale worktree references
+  init                   Create .git gitfile in current project
+  path <name>            Print path to worktree (for cd integration)
+
+Examples:
+  gwt clone git@github.com:user/repo.git
+  gwt clone git@github.com:user/repo.git myproject
+  gwt add feature-branch
+  gwt add new-feature -b
+  gwt remove feature-branch
+EOF
+}
+
+get_root() {
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -d "$dir/.bare" ]]; then
+      echo "$dir"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+  return 1
+}
+
+get_bare() {
+  local root
+  root=$(get_root) || die "not in a gwt project (no .bare directory found)"
+  echo "$root/.bare"
+}
+
+get_main_branch() {
+  local bare="$1"
+  git --git-dir="$bare" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main"
+}
+
+cmd_clone() {
+  local url="${1:-}"
+  [[ -z "$url" ]] && die "usage: gwt clone <url> [name]"
+
+  local name="${2:-$(basename "$url" .git)}"
+
+  [[ -e "$name" ]] && die "directory '$name' already exists"
+
+  echo "Cloning $url into $name/.bare..."
+  mkdir -p "$name"
+  git clone --bare "$url" "$name/.bare"
+  echo "gitdir: ./.bare" > "$name/.git"
+
+  # Configure bare repo for worktree use
+  git -C "$name/.bare" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+  git -C "$name/.bare" fetch origin
+
+  # Determine main branch
+  local main_branch
+  main_branch=$(get_main_branch "$name/.bare")
+
+  # Create worktree for main branch
+  echo "Creating worktree for $main_branch..."
+  git -C "$name/.bare" worktree add "../$main_branch" "$main_branch"
+
+  echo ""
+  echo "Done! Created:"
+  echo "  $name/.bare (bare repository)"
+  echo "  $name/.git (gitfile)"
+  echo "  $name/$main_branch (worktree)"
+  echo ""
+  echo "cd $name/$main_branch to start working"
+}
+
+cmd_add() {
+  local branch=""
+  local create_branch=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -b) create_branch=true; shift ;;
+      -*) die "unknown option: $1" ;;
+      *) branch="$1"; shift ;;
+    esac
+  done
+
+  [[ -z "$branch" ]] && die "usage: gwt add <branch> [-b]"
+
+  local bare root
+  bare=$(get_bare)
+  root=$(get_root)
+  local worktree_path="$root/$branch"
+
+  [[ -e "$worktree_path" ]] && die "worktree '$branch' already exists"
+
+  if $create_branch; then
+    echo "Creating new branch '$branch' and worktree..."
+    git --git-dir="$bare" worktree add -b "$branch" "$worktree_path"
+  else
+    # Fetch to make sure we have latest refs
+    git --git-dir="$bare" fetch origin 2>/dev/null || true
+    echo "Creating worktree for '$branch'..."
+    git --git-dir="$bare" worktree add "$worktree_path" "$branch"
+  fi
+
+  echo "Created worktree at $worktree_path"
+}
+
+cmd_list() {
+  local bare
+  bare=$(get_bare)
+  git --git-dir="$bare" worktree list
+}
+
+cmd_remove() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && die "usage: gwt remove <name>"
+
+  local bare root
+  bare=$(get_bare)
+  root=$(get_root)
+  local worktree_path="$root/$name"
+
+  [[ ! -d "$worktree_path" ]] && die "worktree '$name' does not exist"
+
+  echo "Removing worktree '$name'..."
+  git --git-dir="$bare" worktree remove "$worktree_path"
+  echo "Removed $worktree_path"
+}
+
+cmd_prune() {
+  local bare
+  bare=$(get_bare)
+  echo "Pruning stale worktrees..."
+  git --git-dir="$bare" worktree prune -v
+}
+
+cmd_path() {
+  local name="${1:-}"
+  [[ -z "$name" ]] && die "usage: gwt path <name>"
+
+  local root
+  root=$(get_root)
+  local worktree_path="$root/$name"
+
+  [[ ! -d "$worktree_path" ]] && die "worktree '$name' does not exist"
+
+  echo "$worktree_path"
+}
+
+cmd_init() {
+  local root
+  root=$(get_root)
+
+  [[ -e "$root/.git" ]] && die ".git already exists"
+
+  echo "gitdir: ./.bare" > "$root/.git"
+  echo "Created $root/.git"
+}
+
+# Main dispatch
+case "${1:-}" in
+  clone)  shift; cmd_clone "$@" ;;
+  add)    shift; cmd_add "$@" ;;
+  list)   cmd_list ;;
+  remove) shift; cmd_remove "$@" ;;
+  prune)  cmd_prune ;;
+  init)   cmd_init ;;
+  path)   shift; cmd_path "$@" ;;
+  -h|--help|help|"") usage ;;
+  *)      die "unknown command: $1" ;;
+esac
