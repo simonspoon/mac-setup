@@ -8,3 +8,9 @@ vim.keymap.set("x", "d", '"_d', { noremap = true })
 vim.keymap.set("n", "x", "x", { noremap = true }) -- This is redundant but explicit
 vim.keymap.set("x", "x", "x", { noremap = true })
 vim.keymap.set("n", "<D-S-C-M-CR>", ":wq<CR>", { noremap = true })
+
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
+  pattern = "*",
+  command = "checktime",
+})
+vim.g.autoformat = false
