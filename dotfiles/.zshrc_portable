@@ -93,6 +93,7 @@ alias ls="eza --icons=always"
 alias l="ls -la"
 alias cy="claude --dangerously-skip-permissions"
 alias ta="tmux attach-session -t"
+alias tn="tmux new -s"
 alias startdev="~/mac-setup/scripts/dev.applescript"
 alias oc='opencode'
 alias shelleditlocal="nvim ~/local.zshrc && reloadzsh"
