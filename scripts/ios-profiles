@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-PROFILE_DIR="${PROFILE_DIR:-$HOME/Library/MobileDevice/Provisioning Profiles}"
+PROFILE_DIR="${PROFILE_DIR:-$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles}"
 
 usage() {
   cat <<'EOF'
@@ -209,7 +209,7 @@ print_table_header() {
 truncate_str() {
   local str="$1" max="$2"
   if [[ ${#str} -gt $max ]]; then
-    printf "%s…" "${str:0:$((max-1))}"
+    printf "%s…" "${str:0:$((max - 1))}"
   else
     printf "%s" "$str"
   fi
@@ -219,7 +219,10 @@ format_date() {
   local raw="$1"
   local epoch
   epoch="$(iso_to_epoch "$raw")"
-  [[ "$epoch" -eq 0 ]] && { printf "%s" "$raw"; return; }
+  [[ "$epoch" -eq 0 ]] && {
+    printf "%s" "$raw"
+    return
+  }
   date -j -f "%s" "$epoch" "+%Y-%m-%d" 2>/dev/null || printf "%s" "$raw"
 }
 
