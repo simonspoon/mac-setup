@@ -92,6 +92,7 @@ alias cleanobjbin='find . -type d \( -name "obj" -o -name "bin" \) -print0 | xar
 alias ls="eza --icons=always"
 alias l="ls -la"
 alias cy="claude --dangerously-skip-permissions"
+alias swe-sync="claude plugin update swe-team@claudehub"
 alias ta="tmux attach-session -t"
 alias tn="tmux new -s"
 alias startdev="~/mac-setup/scripts/dev.applescript"
