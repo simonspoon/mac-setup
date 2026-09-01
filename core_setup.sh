@@ -18,6 +18,7 @@ brew install gh
 brew install zsh-autosuggestions
 brew install zsh-syntax-highlighting
 brew install carapace
+brew install cask karabiner-elements
 
 # Backup zshrc, nvim, aerospace and starship configs by moving them (only if not symlinks)
 if [ -f ~/.tmux.conf ] && [ ! -L ~/.tmux.conf ]; then mv ~/.tmux.conf ~/.tmux.conf.ms.bak; fi
