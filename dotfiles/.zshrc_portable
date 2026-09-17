@@ -90,11 +90,13 @@ alias shelleditlocal="nvim ~/local.zshrc && reloadzsh"
 alias shelledit="nvim ~/.zshrc_portable && reloadzsh"
 alias reloadzsh='source ~/.zshrc'
 
-export PATH="$PATH:$HOME/Library/Android/sdk/platform-tools"
-export PATH="$PATH:$HOME/Library/Android/sdk/cmdline-tools/latest/bin/"
-export PATH="$PATH:$HOME/Library/Android/sdk/emulator"
 export PATH="$PATH:$HOME/.cargo/bin/"
-export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+export ANDROID_HOME="/usr/local/share/android-commandlinetools"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+export JAVA_HOME="/usr/local/opt/openjdk@17"
+export PATH="$JAVA_HOME/bin:$PATH"
 
 if [ -f ~/.envs ]; then
   source ~/.envs
